@@ -1,0 +1,3 @@
+The contents inside this folder where donloaded from Asset Store to help speed up the process.
+I my only using sprites / visual assets.
+Every code used during runtime was written by me.

@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using static UnityEditor.Progress;
 
 namespace LSW
 {
@@ -29,13 +28,19 @@ namespace LSW
 
         [Header ("Preview")]
         public TMP_Text textCoins;
+        public Image imageEquiped;
+
+
+        // PlayerPrefs
+        private readonly string ppKeyItemEquiped = "Item_Equiped";
+        private readonly string ppKeyItemBought = "Item_{0}_Bought";
 
 
         private void Start ()
         {
             GameObject itemButton;
             ShopItemScriptableObject item;
-            string equipedItemGuid = PlayerPrefs.GetString ("Item_Equiped", "");
+            string equipedItemGuid = PlayerPrefs.GetString (ppKeyItemEquiped, "");
             for (int i = 0; i < GameController.instance.items.Length; i++)
             {
                 int j = i;
@@ -46,24 +51,25 @@ namespace LSW
                 {
                     ButtonItemShowInfo (j);
                 });
-                bool bought = PlayerPrefs.GetInt ("Item_" + item.guid + "_bought", 0) == 1;
+                bool bought = PlayerPrefs.GetInt (string.Format(ppKeyItemBought, item.guid), 0) == 1;
                 itemButton.transform.GetChild(0).GetComponent<Image> ().enabled = bought;
+                itemButton.transform.GetChild (1).GetComponent<Image> ().enabled = false;
                 itemButtonList.Add (itemButton);
                 if (equipedItemGuid == item.guid)
                 {
                     currentEquipedItemIndex = i;
-                    itemButton.transform.GetChild (1).GetComponent<Image> ().enabled = true;
-                }
-                else
-                {
-                    itemButton.transform.GetChild (1).GetComponent<Image> ().enabled = false;
                 }
             }
             if (currentEquipedItemIndex == -1)
             {
                 currentEquipedItemIndex = 0;
-                itemButtonList[0].transform.GetChild (1).GetComponent<Image> ().enabled = true;
+                itemButtonList[0].transform.GetChild (0).GetComponent<Image> ().enabled = true;
+                PlayerPrefs.SetInt (string.Format (ppKeyItemBought, GameController.instance.items[0].guid), 1);
+                PlayerPrefs.SetString (ppKeyItemEquiped, GameController.instance.items[0].guid);
+                PlayerPrefs.Save ();
             }
+            itemButtonList[currentEquipedItemIndex].transform.GetChild (1).GetComponent<Image> ().enabled = true;
+            imageEquiped.sprite = GameController.instance.items[currentEquipedItemIndex].icon;
             ButtonItemShowInfo (0);
         }
 
@@ -73,27 +79,29 @@ namespace LSW
             itemButtonList[currentEquipedItemIndex].transform.GetChild (1).GetComponent<Image> ().enabled = false;
             itemButtonList[currentItemIndex].transform.GetChild (1).GetComponent<Image> ().enabled = true;
             currentEquipedItemIndex = currentItemIndex;
-            PlayerPrefs.SetString ("Item_Equiped", GameController.instance.items[currentEquipedItemIndex].guid);
+            imageEquiped.sprite = GameController.instance.items[currentEquipedItemIndex].icon;
+            PlayerPrefs.SetString (ppKeyItemEquiped, GameController.instance.items[currentEquipedItemIndex].guid);
             PlayerPrefs.Save ();
+            ButtonItemShowInfo (currentItemIndex);
         }
 
 
         public void ButtonInfoBuy ()
         {
             ShopItemScriptableObject item = GameController.instance.items[currentItemIndex];
-            bool bought = PlayerPrefs.GetInt ("Item_" + item.guid + "_bought", 0) == 1;
+            bool bought = PlayerPrefs.GetInt (string.Format (ppKeyItemBought, item.guid), 0) == 1;
             if (!bought)
             {
                 if (GameController.coins >= item.price)
                 {
                     GameController.coins -= item.price;
-                    PlayerPrefs.SetInt ("Item_" + item.guid + "_bought", 1);
+                    PlayerPrefs.SetInt (string.Format (ppKeyItemBought, item.guid), 1);
                 }
             }
             else
             {
                 GameController.coins += Mathf.RoundToInt (item.price * sellPriceMultiplier);
-                PlayerPrefs.SetInt ("Item_" + item.guid + "_bought", 0);
+                PlayerPrefs.SetInt (string.Format (ppKeyItemBought, item.guid), 0);
             }
             PlayerPrefs.Save ();
             ButtonItemShowInfo (currentItemIndex);
@@ -103,7 +111,8 @@ namespace LSW
         public void ButtonItemShowInfo (int arrayIndex)
         {
             ShopItemScriptableObject i = GameController.instance.items[arrayIndex];
-            bool bought = PlayerPrefs.GetInt ("Item_" + i.guid + "_bought", 0) == 1;
+            bool bought = PlayerPrefs.GetInt (string.Format (ppKeyItemBought, i.guid), 0) == 1;
+            bool equiped = PlayerPrefs.GetString (ppKeyItemEquiped, "") == i.guid;
             textName.text = i.name;
             textDescription.text = i.description;
             LayoutRebuilder.ForceRebuildLayoutImmediate (scrollRectDescription.content);
@@ -115,12 +124,15 @@ namespace LSW
             {
                 textPrice.text = "-" + i.price.ToString ();
             }
+            if (equiped)
+            {
+                textPrice.text = "";
+            }
             currentItemIndex = arrayIndex;
-
             buttonBuySell.GetComponentInChildren<TMP_Text> ().text = bought ? "SELL" : "BUY";
+            buttonBuySell.SetActive (!equiped);
             buttonEquip.SetActive (bought);
             itemButtonList[currentItemIndex].transform.GetChild (0).GetComponent<Image> ().enabled = bought;
-
             textCoins.text = GameController.coins.ToString ();
         }
     }
