@@ -1,3 +1,4 @@
+# if UNITY_EDITOR
 using UnityEditor;
 
 namespace LSW
@@ -19,3 +20,4 @@ namespace LSW
         }
     }
 }
+#endif
